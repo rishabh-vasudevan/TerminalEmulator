@@ -70,11 +70,12 @@ async fn run_command_in_chat_gpt(command: String) -> String {
     let client = ChatGPT::new(chat_gpt_api_key).expect("unable to connect to ChaptGPT client");
     let response = client.send_message(command + " : please return a mac command that can run on bash and nothing else, no special symbols also. Nothing other than the command, please don't give and explanation also. for eg if I ask for a command to display current folder you should just return : pwd").await;
     match response {
-        Ok(res) => {
-            res.message().content.to_owned()
-        },
-       Err(e) => {
-            panic!("There was an error in sending the command to chatGPT : {}", e)
+        Ok(res) => res.message().content.to_owned(),
+        Err(e) => {
+            panic!(
+                "There was an error in sending the command to chatGPT : {}",
+                e
+            )
         }
     }
 }
@@ -83,7 +84,9 @@ async fn run_command_in_chat_gpt(command: String) -> String {
 async fn output(request: Json<Request>, pty: &State<Pty>, output_file: &State<File>) -> String {
     if request.command.chars().nth(0).unwrap() == '#' {
         let response_of_chatgpt = run_command_in_chat_gpt(request.command.to_string());
-        return request.command.to_string()[1..].to_string()+ ":\n" + response_of_chatgpt.await.as_str()
+        return request.command.to_string()[1..].to_string()
+            + ":\n"
+            + response_of_chatgpt.await.as_str();
     }
     let fd_val = pty.fd;
     let mut output = output_file
@@ -97,15 +100,13 @@ async fn output(request: Json<Request>, pty: &State<Pty>, output_file: &State<Fi
         Ok(_) => (),
         Err(_) => panic!("There was some error in flushing the output"),
     }
-    loop{
-    match read_from_fd(fd_val) {
-        Some(read_bytes) => {
-            let std_output = String::from_utf8(read_bytes).unwrap();
-            return remove_ansi_escape_codes(&std_output)
-        },
-        None => {
-            continue
-        }
+    loop {
+        match read_from_fd(fd_val) {
+            Some(read_bytes) => {
+                let std_output = String::from_utf8(read_bytes).unwrap();
+                return remove_ansi_escape_codes(&std_output);
+            }
+            None => continue,
         }
     }
 }
