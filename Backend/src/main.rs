@@ -81,7 +81,7 @@ async fn run_command_in_chat_gpt(command: String) -> String {
 }
 
 #[post("/get_output", data = "<request>")]
-async fn output(request: Json<Request>, pty: &State<Pty>, output_file: &State<File>) -> String {
+async fn send_command_to_terminal(request: Json<Request>, pty: &State<Pty>, output_file: &State<File>) -> String {
     if request.command.chars().nth(0).unwrap() == '#' {
         let response_of_chatgpt = run_command_in_chat_gpt(request.command.to_string());
         return request.command.to_string()[1..].to_string()
@@ -116,10 +116,10 @@ fn rocket() -> _ {
     let shell = "/bin/bash";
     let pty = create_pty(&shell);
     println!("The FD for the PTY is {}", pty.fd);
-    let output_file = unsafe { File::from_raw_fd(pty.fd) };
+    let output_file: File = unsafe { File::from_raw_fd(pty.fd) };
     dotenv().expect("Could not load .env file");
     rocket::build()
-        .mount("/", routes![output])
+        .mount("/", routes![send_command_to_terminal])
         .manage(pty)
         .manage(output_file)
 }
